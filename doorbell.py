@@ -6,17 +6,17 @@
 DOORBELL_PIN = 19
 
 # Your raspberry pi's ip address
-RASPI_LOCAL_IP='192.168.178.95'
+RASPBERRYPI_LOCAL_IP = ''
 
-# Number of seconds to keep the call active
-DOORBELL_SCREEN_ACTIVE_S = 180
+# Number of seconds to keep the meeting active
+MEETING_ACTIVE_S = 180
 
 # ID of the JITSI meeting room
 # if None then a random UUID is used as meeting id
 JITSI_ID = None
 
-# Path to the SFX file
-RING_SFX_PATH = '/home/pi/wifi-doorbell/doorbell.wav'
+# Path to the sound file, which is player after the doorbell is pushed
+SOUNDFILE_PATH = '/home/pi/wifi-doorbell/doorbell.wav'
 
 # Enables email notifications
 ENABLE_EMAIL = True
@@ -25,16 +25,15 @@ ENABLE_EMAIL = True
 ENABLE_RING = True
 
 # Email address you want to send the notification from (only works with gmail)
-FROM_EMAIL = 'witzelniklas.schule@gmail.com'
+FROM_EMAIL = ''
 
 # You can generate an app password here to avoid storing your password in plain text
 # this should also come from an environment variable
 # https://support.google.com/accounts/answer/185833?hl=en
-FROM_EMAIL_PASSWORD = 'xtesorxdakdodtkp'
+FROM_EMAIL_PASSWORD = ''
 
 # Email you want to send the update to
-TO_EMAIL = 'niklas.witzel@nordakademie.de'
-
+TO_EMAIL = ''
 
 #############
 #  Program  #
@@ -66,24 +65,24 @@ def hide_screen():
 
 
 def send_email_notification(meeting_url):
-
     if ENABLE_EMAIL:
-	unlock_url = 'http://%s/unlock' % RASPI_LOCAL_IP
+        unlock_url = 'http://%s/unlock' % RASPBERRYPI_LOCAL_IP
 
         sender = EmailSender(FROM_EMAIL, FROM_EMAIL_PASSWORD)
         email = Email(
             sender,
             'Wifi Doorbell',
             'Someone rang at your door!',
-            'A visitor is waiting outside your door. If you want to talk to him click here: %s\n\nIf you want to open the door for him, click here: %s' % (meeting_url, unlock_url)
+            'A visitor is waiting outside your door. If you want to talk to him click here: %s\n\n'
+            'If you want to open the door for him, click here: %s'
+            % (meeting_url, unlock_url)
         )
         email.send(TO_EMAIL)
 
 
 def ring_doorbell(pin):
-
     # plays ring sound
-    ring_sound = Sound(RING_SFX_PATH)
+    ring_sound = Sound(SOUNDFILE_PATH)
     ring_sound.play()
 
     # create and start Jitsi meeting
@@ -96,17 +95,19 @@ def ring_doorbell(pin):
 
     # show jitsi meeting for DOORBELL_SCREEN_ACTIVE_S seconds and end meeting
     show_screen()
-    time.sleep(DOORBELL_SCREEN_ACTIVE_S)
+    time.sleep(MEETING_ACTIVE_S)
     meeting.end()
     hide_screen()
 
+
 class Sound:
     def __init__(self, sound_path):
-	self.sound_path = sound_path
+        self.sound_path = sound_path
 
     def play(self):
-	if ENABLE_RING:
-	     subprocess.Popen(["omxplayer", "-o", "local", RING_SFX_PATH])
+        if ENABLE_RING:
+            subprocess.Popen(["omxplayer", "-o", "local", self.sound_path])
+
 
 class JitsiMeeting:
     def __init__(self, meeting_id):
@@ -125,6 +126,7 @@ class JitsiMeeting:
     def end(self):
         if self._process:
             os.kill(self._process.pid, signal.SIGTERM)
+
 
 class EmailSender:
     def __init__(self, email, password):
@@ -166,26 +168,26 @@ class Doorbell:
         try:
             print("Starting Doorbell...")
             hide_screen()
-            self._setup_gpio()
+            self.setup_gpio()
             print("Waiting for doorbell rings...")
-            self._wait_forever()
+            self.wait_forever()
 
         except KeyboardInterrupt:
             print("Safely shutting down...")
 
         finally:
-            self._cleanup()
+            self.cleanup()
 
-    def _wait_forever(self):
+    def wait_forever(self):
         while True:
             time.sleep(0.1)
 
-    def _setup_gpio(self):
+    def setup_gpio(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self._doorbell_button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.add_event_detect(self._doorbell_button_pin, GPIO.RISING, callback=ring_doorbell, bouncetime=10000)
 
-    def _cleanup(self):
+    def cleanup(self):
         GPIO.cleanup(self._doorbell_button_pin)
         show_screen()
 
