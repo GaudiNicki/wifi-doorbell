@@ -28,7 +28,6 @@ ENABLE_RING = True
 FROM_EMAIL = ''
 
 # You can generate an app password here to avoid storing your password in plain text
-# this should also come from an environment variable
 # https://support.google.com/accounts/answer/185833?hl=en
 FROM_EMAIL_PASSWORD = ''
 
